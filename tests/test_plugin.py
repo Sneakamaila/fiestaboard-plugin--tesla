@@ -3,7 +3,7 @@
 import pytest
 import responses
 from plugins.tesla import TeslaPlugin
-from plugins.tesla.tessie_client import TESSIE_API_BASE
+from plugins.tesla.providers.tessie import TESSIE_API_BASE
 
 
 def test_plugin_properties(manifest_dict):
@@ -20,9 +20,16 @@ def test_validate_config(manifest_dict):
     # Valid config with demo_mode
     assert plugin.validate_config({"demo_mode": True}) == []
 
+    # Valid config with TeslaMate
+    assert plugin.validate_config({"provider": "teslamate", "teslamate_url": "http://192.168.1.50:8080"}) == []
+
     # Invalid: missing api_key and demo_mode is False
     errors = plugin.validate_config({"demo_mode": False})
-    assert any("Tessie API Token is required" in err for err in errors)
+    assert any("API Token is required" in err for err in errors)
+
+    # Invalid: TeslaMate without URL
+    errors = plugin.validate_config({"provider": "teslamate", "teslamate_url": ""})
+    assert any("TeslaMate base URL is required" in err for err in errors)
 
     # Invalid: refresh_seconds too low
     errors = plugin.validate_config({"demo_mode": True, "refresh_seconds": 30})
@@ -100,7 +107,6 @@ def test_check_triggers_low_battery(manifest_dict, monkeypatch):
     plugin = TeslaPlugin(manifest=manifest_dict)
     plugin.config = {"demo_mode": True}
 
-    # Mock fetch_data to simulate critical low battery
     low_bat_data = {
         "vehicle_name": "Model Y",
         "battery_level": 12,

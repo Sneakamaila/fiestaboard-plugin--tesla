@@ -1,8 +1,8 @@
 {
   "id": "tesla",
   "name": "Tesla",
-  "version": "0.1.0",
-  "description": "Display real-time Tesla status (battery level, range, charging, climate, lock state) powered by Tessie.",
+  "version": "0.2.0",
+  "description": "Display real-time Tesla status (battery level, range, charging, climate, lock state) powered by Tessie, self-hosted TeslaMate, or the official Tesla Fleet API.",
   "author": "Sneakamaila",
   "icon": "car",
   "category": "automotive",
@@ -17,10 +17,17 @@
         "title": "Enabled",
         "default": false
       },
+      "provider": {
+        "type": "string",
+        "title": "Data Provider",
+        "description": "Select your Tesla telemetry source.",
+        "enum": ["tessie", "teslamate", "fleet_api", "demo"],
+        "default": "tessie"
+      },
       "api_key": {
         "type": "string",
-        "title": "Tessie API Token",
-        "description": "Personal Access Token from your Tessie account (dash.tessie.com/settings/api).",
+        "title": "API Token (Tessie / Fleet API)",
+        "description": "Personal Access Token for Tessie (dash.tessie.com/settings/api) or Tesla Fleet API Bearer Token.",
         "format": "password"
       },
       "vin": {
@@ -28,6 +35,31 @@
         "title": "Vehicle VIN (Optional)",
         "description": "Specific vehicle VIN. Leave empty to automatically select your first vehicle.",
         "default": ""
+      },
+      "teslamate_url": {
+        "type": "string",
+        "title": "TeslaMate API URL",
+        "description": "Base URL of your self-hosted TeslaMateApi instance (e.g. http://192.168.1.100:8080 or http://homeassistant.local:8080).",
+        "default": ""
+      },
+      "teslamate_api_key": {
+        "type": "string",
+        "title": "TeslaMate API Key (Optional)",
+        "description": "Optional Bearer token if your TeslaMateApi is password-protected.",
+        "format": "password"
+      },
+      "car_id": {
+        "type": "integer",
+        "title": "TeslaMate Car ID",
+        "description": "Vehicle ID in your TeslaMate database (default: 1).",
+        "default": 1
+      },
+      "fleet_region": {
+        "type": "string",
+        "title": "Tesla Fleet API Region",
+        "description": "Region for official Tesla Fleet API.",
+        "enum": ["eu", "na", "cn"],
+        "default": "eu"
       },
       "unit_system": {
         "type": "string",
@@ -39,14 +71,14 @@
       "refresh_seconds": {
         "type": "integer",
         "title": "Refresh Interval (seconds)",
-        "description": "How often to poll Tessie cache. Minimum 60 seconds (default: 300).",
+        "description": "How often to poll telemetry data. Minimum 60 seconds (default: 300).",
         "default": 300,
         "minimum": 60
       },
       "demo_mode": {
         "type": "boolean",
         "title": "Demo Mode",
-        "description": "Simulate live Tesla telemetry without needing an API token.",
+        "description": "Simulate live Tesla telemetry without needing credentials or external services.",
         "default": false
       }
     },
@@ -159,7 +191,7 @@
         "example": "{66}{66}{66}{66}{70}"
       },
       "battery_badge": {
-        "description": "Single color tile representing battery health ({66}=green, {65}=yellow, {63}=red)",
+        "description": "Single color tile representing battery health ({66}=green, {65}=yellow, {63}=red, {67}=charging)",
         "type": "string",
         "max_length": 6,
         "group": "battery",

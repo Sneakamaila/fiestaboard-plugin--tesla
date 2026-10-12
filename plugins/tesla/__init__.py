@@ -1,4 +1,4 @@
-"""Tesla plugin for FiestaBoard powered by Tessie."""
+"""Tesla plugin for FiestaBoard supporting Tessie, TeslaMate, and Tesla Fleet API."""
 
 from __future__ import annotations
 
@@ -67,7 +67,14 @@ from .formatters import (
     format_temp,
     format_time_remaining,
 )
-from .tessie_client import TessieApiError, TessieClient
+from .providers import (
+    BaseTeslaProvider,
+    DemoProvider,
+    ProviderError,
+    TeslaFleetApiProvider,
+    TeslaMateProvider,
+    TessieProvider,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -79,27 +86,48 @@ class TeslaPlugin(PluginBase):
     def plugin_id(self) -> str:
         return "tesla"
 
-    def fetch_data(self) -> PluginResult:
-        """Fetch Tesla vehicle telemetry from Tessie and return formatted variables."""
-        cfg = self.config or {}
-        api_key = cfg.get("api_key", "")
-        vin = cfg.get("vin", "")
-        unit_system = cfg.get("unit_system", "metric")
+    def _get_provider(self, cfg: Dict[str, Any]) -> BaseTeslaProvider:
+        """Instantiate the appropriate telemetry provider based on configuration."""
+        provider_name = (cfg.get("provider") or "").lower().strip()
         demo_mode = bool(cfg.get("demo_mode", False))
 
-        if not api_key and not demo_mode:
-            return PluginResult(
-                available=False,
-                error="Tessie API Key is not configured. Please enter your API key or enable Demo Mode in Integrations.",
+        if demo_mode or provider_name == "demo":
+            return DemoProvider()
+
+        if provider_name == "teslamate" or bool(cfg.get("teslamate_url")):
+            car_id_raw = cfg.get("car_id", 1)
+            try:
+                car_id = int(car_id_raw)
+            except (ValueError, TypeError):
+                car_id = 1
+            return TeslaMateProvider(
+                base_url=cfg.get("teslamate_url", ""),
+                api_key=cfg.get("teslamate_api_key"),
+                car_id=car_id,
             )
 
-        try:
-            client = TessieClient(
-                api_key=api_key,
-                vin=vin,
-                demo_mode=demo_mode,
+        if provider_name == "fleet_api":
+            return TeslaFleetApiProvider(
+                access_token=cfg.get("api_key", ""),
+                region=cfg.get("fleet_region", "eu"),
+                custom_endpoint=cfg.get("fleet_custom_endpoint"),
+                vin=cfg.get("vin"),
             )
-            raw = client.get_vehicle_data()
+
+        # Default: Tessie
+        return TessieProvider(
+            api_key=cfg.get("api_key", ""),
+            vin=cfg.get("vin", ""),
+        )
+
+    def fetch_data(self) -> PluginResult:
+        """Fetch Tesla vehicle telemetry and return formatted variables."""
+        cfg = self.config or {}
+        unit_system = cfg.get("unit_system", "metric")
+
+        try:
+            provider = self._get_provider(cfg)
+            raw = provider.get_vehicle_data()
 
             # Extract sub-states safely
             charge = raw.get("charge_state", {}) or {}
@@ -168,7 +196,7 @@ class TeslaPlugin(PluginBase):
 
             variables = {
                 "vehicle_name": display_name,
-                "vin": raw.get("vin", vin),
+                "vin": raw.get("vin", cfg.get("vin", "")),
                 "car_type": car_type_str,
                 "state": state_str,
                 "locked": locked_str,
@@ -197,8 +225,8 @@ class TeslaPlugin(PluginBase):
 
             return PluginResult(available=True, data=variables)
 
-        except TessieApiError as e:
-            logger.warning("Tessie API error for Tesla plugin: %s", e)
+        except ProviderError as e:
+            logger.warning("Provider error for Tesla plugin: %s", e)
             return PluginResult(available=False, error=str(e))
         except Exception as e:
             logger.exception("Unexpected error fetching Tesla data")
@@ -252,10 +280,17 @@ class TeslaPlugin(PluginBase):
             return errors
 
         demo_mode = config.get("demo_mode", False)
-        api_key = (config.get("api_key") or "").strip()
+        provider = (config.get("provider") or "").lower().strip()
 
-        if not demo_mode and not api_key:
-            errors.append("Tessie API Token is required unless Demo Mode is enabled.")
+        if not demo_mode and provider != "demo":
+            if provider == "teslamate":
+                if not (config.get("teslamate_url") or "").strip():
+                    errors.append("TeslaMate base URL is required when using the TeslaMate provider.")
+            else:
+                # Tessie or Fleet API
+                api_key = (config.get("api_key") or "").strip()
+                if not api_key:
+                    errors.append("API Token is required for Tessie and Tesla Fleet API unless Demo Mode is enabled.")
 
         refresh_seconds = config.get("refresh_seconds")
         if refresh_seconds is not None:
