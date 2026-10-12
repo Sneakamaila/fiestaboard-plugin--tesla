@@ -251,14 +251,14 @@
         "type": "string",
         "max_length": 8,
         "group": "climate",
-        "example": "21°C"
+        "example": "21C"
       },
       "outside_temp": {
         "description": "Outside ambient temperature",
         "type": "string",
         "max_length": 8,
         "group": "climate",
-        "example": "16°C"
+        "example": "16C"
       },
       "climate_on": {
         "description": "Climate control status (ON or OFF)",
@@ -290,15 +290,15 @@
       }
     }
   },
-  "teaser": "MODEL Y 82% 412KM",
+  "teaser": "MODEL Y 82%",
   "previews": [
     {
       "device_type": "flagship",
       "rows": [
         "MODEL Y     82% {66}{66}{66}{66}{70}",
-        "Range: 412 km (Lim 80%)",
-        "Status: Asleep / Locked",
-        "Climate: OFF (In: 21°C)",
+        "Range: 412 km Lim: 80%",
+        "State: Asleep / Locked",
+        "Climate: OFF  In: 21C",
         "Odometer: 42,350 km",
         "Updated: 22:30"
       ]

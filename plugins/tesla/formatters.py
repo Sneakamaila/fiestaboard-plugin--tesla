@@ -125,16 +125,19 @@ def format_temp(
     celsius: int | float | None,
     unit_system: str = "metric",
 ) -> str:
-    """Format temperature (input in °C from Tesla API)."""
+    """Format temperature (input in °C from Tesla API).
+
+    Outputs C or F since split-flap character sets do not include the degree sign.
+    """
     if celsius is None:
         return "--"
 
     c = float(celsius)
     if unit_system == "imperial":
         f = int(round((c * 9.0 / 5.0) + 32.0))
-        return f"{f}°F"
+        return f"{f}F"
 
-    return f"{int(round(c))}°C"
+    return f"{int(round(c))}C"
 
 
 def format_time_remaining(hours: int | float | None) -> str:

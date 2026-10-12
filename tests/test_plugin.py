@@ -143,3 +143,54 @@ def test_check_triggers_charging_complete(manifest_dict, monkeypatch):
     assert len(triggers) == 1
     assert triggers[0].triggered is True
     assert "charging complete" in triggers[0].message
+
+
+def test_manifest_previews_and_teaser_compliance(manifest_dict):
+    """Ensure manifest teaser and previews strictly comply with FiestaBoard dimensional constraints."""
+    import re
+
+    color_marker_re = re.compile(r"\{([0-9]{1,2}|[a-zA-Z_]+)\}")
+    valid_chars = set("ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890 !@#$()+-&=;: '\"%,./?")
+
+    def count_tiles(text: str) -> int:
+        tiles = 0
+        pos = 0
+        while pos < len(text):
+            m = color_marker_re.match(text, pos)
+            if m:
+                tiles += 1
+                pos = m.end()
+                continue
+            tiles += 1
+            pos += 1
+        return tiles
+
+    # 1. Teaser check: max 15 tiles (Note width)
+    teaser = manifest_dict.get("teaser", "")
+    assert teaser, "Teaser is required"
+    assert count_tiles(teaser) <= 15, f"Teaser exceeds 15 tiles: {count_tiles(teaser)}"
+
+    # 2. Previews check: Flagship (22 cols, 6 rows), Note (15 cols, 3 rows)
+    previews = manifest_dict.get("previews", [])
+    assert previews, "Previews are required"
+
+    dims = {"flagship": (6, 22), "note": (3, 15)}
+    for p_idx, preview in enumerate(previews):
+        device = preview.get("device_type")
+        assert device in dims, f"Unknown device_type: {device}"
+        max_rows, max_cols = dims[device]
+        rows = preview.get("rows", [])
+        assert len(rows) <= max_rows, f"Preview {p_idx} has too many rows ({len(rows)} > {max_rows})"
+        for r_idx, row in enumerate(rows):
+            width = count_tiles(row)
+            assert width <= max_cols, f"Preview {p_idx} row {r_idx} exceeds {max_cols} tiles: {width} -> '{row}'"
+            pos = 0
+            while pos < len(row):
+                m = color_marker_re.match(row, pos)
+                if m:
+                    pos = m.end()
+                    continue
+                c = row[pos].upper()
+                assert c in valid_chars, f"Unmappable character '{c}' in preview {p_idx} row {r_idx}"
+                pos += 1
+

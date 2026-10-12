@@ -69,9 +69,9 @@ def test_format_speed():
 
 
 def test_format_temp():
-    assert format_temp(21.2, unit_system="metric") == "21°C"
-    # 21°C -> 69.8 -> 70°F
-    assert format_temp(21.0, unit_system="imperial") == "70°F"
+    assert format_temp(21.2, unit_system="metric") == "21C"
+    # 21°C -> 69.8 -> 70F
+    assert format_temp(21.0, unit_system="imperial") == "70F"
     assert format_temp(None) == "--"
 
 

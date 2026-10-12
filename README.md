@@ -42,9 +42,9 @@ Supports multiple data providers: **Tessie API**, self-hosted **TeslaMate**, and
 #### Standard Overview
 ```text
 MODEL Y     82% {66}{66}{66}{66}{70}
-Range: 412 km (Lim 80%)
-Status: Asleep / Locked
-Climate: OFF (In: 21°C)
+Range: 412 km Lim: 80%
+State: Asleep / Locked
+Climate: OFF  In: 21C
 Odometer: 42,350 km
 Updated: 22:30
 ```
