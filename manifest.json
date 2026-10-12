@@ -1,0 +1,323 @@
+{
+  "id": "tesla",
+  "name": "Tesla",
+  "version": "0.1.0",
+  "description": "Display real-time Tesla status (battery level, range, charging, climate, lock state) powered by Tessie.",
+  "author": "Sneakamaila",
+  "icon": "car",
+  "category": "automotive",
+  "repository": "https://github.com/Sneakamaila/fiestaboard-plugin--tesla",
+  "documentation": "README.md",
+  "min_refresh_seconds": 60,
+  "settings_schema": {
+    "type": "object",
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "title": "Enabled",
+        "default": false
+      },
+      "api_key": {
+        "type": "string",
+        "title": "Tessie API Token",
+        "description": "Personal Access Token from your Tessie account (dash.tessie.com/settings/api).",
+        "format": "password"
+      },
+      "vin": {
+        "type": "string",
+        "title": "Vehicle VIN (Optional)",
+        "description": "Specific vehicle VIN. Leave empty to automatically select your first vehicle.",
+        "default": ""
+      },
+      "unit_system": {
+        "type": "string",
+        "title": "Unit System",
+        "description": "Choose between metric (km, °C) and imperial (miles, °F).",
+        "enum": ["metric", "imperial"],
+        "default": "metric"
+      },
+      "refresh_seconds": {
+        "type": "integer",
+        "title": "Refresh Interval (seconds)",
+        "description": "How often to poll Tessie cache. Minimum 60 seconds (default: 300).",
+        "default": 300,
+        "minimum": 60
+      },
+      "demo_mode": {
+        "type": "boolean",
+        "title": "Demo Mode",
+        "description": "Simulate live Tesla telemetry without needing an API token.",
+        "default": false
+      }
+    },
+    "required": []
+  },
+  "variables": {
+    "groups": {
+      "vehicle": {
+        "label": "Vehicle Information"
+      },
+      "battery": {
+        "label": "Battery & Energy"
+      },
+      "charging": {
+        "label": "Charging State"
+      },
+      "climate": {
+        "label": "Climate & Temperature"
+      },
+      "drive": {
+        "label": "Drive & Motion"
+      },
+      "system": {
+        "label": "System & Timestamp"
+      }
+    },
+    "simple": {
+      "vehicle_name": {
+        "description": "Vehicle display name (e.g. Model Y, Starship)",
+        "type": "string",
+        "max_length": 22,
+        "group": "vehicle",
+        "example": "Model Y"
+      },
+      "vin": {
+        "description": "Vehicle VIN",
+        "type": "string",
+        "max_length": 17,
+        "group": "vehicle",
+        "example": "5YJ3E1EB8NF123456"
+      },
+      "car_type": {
+        "description": "Vehicle model and trim",
+        "type": "string",
+        "max_length": 22,
+        "group": "vehicle",
+        "example": "Model Y Long Range"
+      },
+      "state": {
+        "description": "Vehicle status (Online, Asleep, Driving, Charging)",
+        "type": "string",
+        "max_length": 12,
+        "group": "vehicle",
+        "example": "Asleep"
+      },
+      "locked": {
+        "description": "Vehicle lock state (Locked or Unlocked)",
+        "type": "string",
+        "max_length": 10,
+        "group": "vehicle",
+        "example": "Locked"
+      },
+      "sentry_mode": {
+        "description": "Sentry Mode status (ON or OFF)",
+        "type": "string",
+        "max_length": 5,
+        "group": "vehicle",
+        "example": "OFF"
+      },
+      "odometer": {
+        "description": "Total vehicle odometer reading with unit",
+        "type": "string",
+        "max_length": 15,
+        "group": "vehicle",
+        "example": "42,350 km"
+      },
+      "battery_level": {
+        "description": "Battery state of charge integer percentage",
+        "type": "integer",
+        "max_length": 3,
+        "group": "battery",
+        "example": "82"
+      },
+      "battery_pct": {
+        "description": "Battery state of charge with percent sign",
+        "type": "string",
+        "max_length": 5,
+        "group": "battery",
+        "example": "82%"
+      },
+      "battery_range": {
+        "description": "Estimated remaining battery range",
+        "type": "string",
+        "max_length": 10,
+        "group": "battery",
+        "example": "412 km"
+      },
+      "battery_bar_ascii": {
+        "description": "ASCII progress bar for battery level",
+        "type": "string",
+        "max_length": 12,
+        "group": "battery",
+        "example": "[========  ]"
+      },
+      "battery_bar_color": {
+        "description": "Vestaboard color tiles representation of battery level",
+        "type": "string",
+        "max_length": 30,
+        "group": "battery",
+        "example": "{66}{66}{66}{66}{70}"
+      },
+      "battery_badge": {
+        "description": "Single color tile representing battery health ({66}=green, {65}=yellow, {63}=red)",
+        "type": "string",
+        "max_length": 6,
+        "group": "battery",
+        "example": "{66}"
+      },
+      "is_charging": {
+        "description": "Whether vehicle is currently actively charging",
+        "type": "string",
+        "max_length": 5,
+        "group": "charging",
+        "example": "NO"
+      },
+      "charging_state": {
+        "description": "Detailed charging status (Charging, Complete, Disconnected, Stopped)",
+        "type": "string",
+        "max_length": 15,
+        "group": "charging",
+        "example": "Disconnected"
+      },
+      "charger_power": {
+        "description": "Current charging power in kW",
+        "type": "string",
+        "max_length": 10,
+        "group": "charging",
+        "example": "11.0 kW"
+      },
+      "charge_rate": {
+        "description": "Charge rate in distance per hour",
+        "type": "string",
+        "max_length": 12,
+        "group": "charging",
+        "example": "65 km/h"
+      },
+      "time_to_full": {
+        "description": "Estimated time to reach charge limit",
+        "type": "string",
+        "max_length": 10,
+        "group": "charging",
+        "example": "1h 25m"
+      },
+      "charge_limit": {
+        "description": "Configured charge limit percentage",
+        "type": "string",
+        "max_length": 5,
+        "group": "charging",
+        "example": "80%"
+      },
+      "charging_summary": {
+        "description": "Short charging overview line",
+        "type": "string",
+        "max_length": 22,
+        "group": "charging",
+        "example": "11kW (1h 25m to 80%)"
+      },
+      "inside_temp": {
+        "description": "Interior cabin temperature",
+        "type": "string",
+        "max_length": 8,
+        "group": "climate",
+        "example": "21°C"
+      },
+      "outside_temp": {
+        "description": "Outside ambient temperature",
+        "type": "string",
+        "max_length": 8,
+        "group": "climate",
+        "example": "16°C"
+      },
+      "climate_on": {
+        "description": "Climate control status (ON or OFF)",
+        "type": "string",
+        "max_length": 5,
+        "group": "climate",
+        "example": "OFF"
+      },
+      "speed": {
+        "description": "Current vehicle speed",
+        "type": "string",
+        "max_length": 10,
+        "group": "drive",
+        "example": "0 km/h"
+      },
+      "shift_state": {
+        "description": "Gear position (P, R, N, D)",
+        "type": "string",
+        "max_length": 2,
+        "group": "drive",
+        "example": "P"
+      },
+      "last_updated": {
+        "description": "Timestamp of last received telemetry update (HH:MM)",
+        "type": "string",
+        "max_length": 8,
+        "group": "system",
+        "example": "22:30"
+      }
+    }
+  },
+  "teaser": "MODEL Y 82% 412KM",
+  "previews": [
+    {
+      "device_type": "flagship",
+      "rows": [
+        "MODEL Y     82% {66}{66}{66}{66}{70}",
+        "Range: 412 km (Lim 80%)",
+        "Status: Asleep / Locked",
+        "Climate: OFF (In: 21°C)",
+        "Odometer: 42,350 km",
+        "Updated: 22:30"
+      ]
+    },
+    {
+      "device_type": "note",
+      "rows": [
+        "{66} MODEL Y 82%",
+        "412 KM RANGE",
+        "ASLEEP / LOCKED"
+      ]
+    }
+  ],
+  "api_docs": "https://developer.tessie.com",
+  "demo": {
+    "flagship": {
+      "name": "Tesla Status",
+      "config": {
+        "enabled": true,
+        "refresh_seconds": 300,
+        "demo_mode": true
+      },
+      "template": [
+        "{{tesla.vehicle_name}}     {{tesla.battery_pct}} {{tesla.battery_bar_color}}",
+        "Range: {{tesla.battery_range}} (Lim {{tesla.charge_limit}})",
+        "Status: {{tesla.state}} / {{tesla.locked}}",
+        "Climate: {{tesla.climate_on}} (In: {{tesla.inside_temp}})",
+        "Odo: {{tesla.odometer}}",
+        "Updated: {{tesla.last_updated}}"
+      ],
+      "line_metadata": [
+        { "alignment": "left", "wrap": false },
+        { "alignment": "left", "wrap": false },
+        { "alignment": "left", "wrap": false },
+        { "alignment": "left", "wrap": false },
+        { "alignment": "left", "wrap": false },
+        { "alignment": "left", "wrap": false }
+      ]
+    },
+    "note": {
+      "name": "Tesla Status (Note)",
+      "template": [
+        "{{tesla.battery_badge}} {{tesla.vehicle_name}} {{tesla.battery_pct}}",
+        "{{tesla.battery_range}} RANGE",
+        "{{tesla.state}} / {{tesla.locked}}"
+      ],
+      "line_metadata": [
+        { "alignment": "left", "wrap": false },
+        { "alignment": "left", "wrap": false },
+        { "alignment": "left", "wrap": false }
+      ]
+    }
+  }
+}
